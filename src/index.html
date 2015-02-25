@@ -92,8 +92,10 @@
 
   <!-- Report dialog -->
   <paper-dialog id="report-dialog" heading="Bug Report" backdrop autoCloseDisabled transition="paper-dialog-transition-center">
-    <p>Please file a bug in the <a id="report-link">Chromium bug tracker</a> and attach the report from this page.</p>
-    <paper-button id="report-download" onclick="report.downloadReport()">Download Report</paper-button>
+    <p>By selecting UPLOAD REPORT AND FILE BUG link you will be redirected to the Chromium bug tracker and a log report
+      will be uploaded to the WebRTC troubleshooter server. This log contains information about your device that can be used to troubleshoot your device.</p>
+    <p id="download-url"></p>
+    <paper-button id="upload-button" onclick="report.prepareReport(this.parentElement)">Upload report and file bug</paper-button>
     <paper-button onclick="this.parentElement.close()">Close</paper-button>
   </paper-dialog>
 

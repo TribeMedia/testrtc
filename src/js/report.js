@@ -24,16 +24,72 @@ function Report() {
 
 Report.prototype = {
   open: function() {
-    document.getElementById('report-link').href = this.linkToChromiumBug_();
     document.getElementById('report-dialog').open();
   },
 
-  downloadReport: function() {
-    var content = encodeURIComponent(this.getContent_());
-    var link = document.createElement('a');
-    link.setAttribute('href', 'data:text/plain;charset=utf-8,' + content);
-    link.setAttribute('download', 'testrtc-' + (new Date().toJSON()) + '.log');
-    link.click();
+  prepareReport: function(parentElement) {
+    // Opened paper-dialogs are in shadow root hence the element reference needs
+    // to be provided.
+    this.downloadUrlElement = parentElement.querySelector('#download-url');
+    this.uploadButton = parentElement.querySelector('#upload-button');
+
+    // Make sure the download link is cleared and the upload button is enabled
+    // on close. Need to find the elements in the document root because when the
+    // paper-dialog is closed it's no longer in shadow-root.
+    parentElement.addEventListener('core-overlay-close-completed', function() {
+      document.getElementById('upload-button').disabled = false;
+      document.getElementById('download-url').innerHTML = '';
+    }, false);
+
+    // Create file.
+    this.fileName = 'testrtc-' + new Date().toJSON() + '.log';
+    var fileContent = this.getContent_();
+    var blob = new Blob([fileContent], {type: 'text/plain'});
+    this.formData = new FormData();
+    this.formData.append(this.fileName, blob, this.fileName);
+
+    this.getBlobUrl_();
+  },
+
+   // Get the upload url from blobstore.
+  getBlobUrl_: function() {
+    var xhr = new XMLHttpRequest();
+    xhr.open('HEAD', '/upload', true);
+
+    xhr.addEventListener('load', function(response) {
+      if (response.currentTarget.status === 200) {
+        this.fileUpload_(xhr.getResponseHeader('response-text'));
+      } else {
+        this.downloadUrlElement.innerHTML = 'Fetching URL failed with error: ' +
+            response.currentTarget.status + '.';
+        this.traceEventInstant('log', this.downloadUrlElement.innerHTML);
+      }
+    }.bind(this), false);
+
+    xhr.send(null);
+  },
+
+  // Upload the file using the blobstore url as an argument.
+  fileUpload_: function(url) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', url, true);
+    xhr.setRequestHeader('X-File-Name', this.fileName);
+
+    xhr.addEventListener('load', function(response) {
+      if (response.currentTarget.status === 200) {
+        this.downloadUrlElement.innerHTML = 'Link to log file: ' + '<a href=' +
+            xhr.getResponseHeader('response-text') + '> ' +
+            xhr.getResponseHeader('response-text') + '</a>';
+        this.uploadButton.disabled = true;
+        this.linkToChromiumBug_(xhr.getResponseHeader('response-text'));
+      } else {
+        this.downloadUrlElement.innerHTML = 'Upload failed with error: ' +
+            response.currentTarget.status + '.';
+        this.traceEventInstant('log', this.downloadUrlElement.innerHTML);
+      }
+    }.bind(this), false);
+
+    xhr.send(this.formData);
   },
 
   traceEventInstant: function(name, args) {
@@ -65,13 +121,12 @@ Report.prototype = {
     });
   },
 
-  linkToChromiumBug_: function() {
+  linkToChromiumBug_: function(logUrl) {
     var info = Report.getSystemInfo();
 
     var description = 'Browser: ' + info.browserName + ' ' +
         info.browserVersion + ' (' + info.platform + ')\n\n' +
-        'Output from the troubleshooting page at http://test.webrtc.org:\n\n' +
-        'Please replace this text with the copy+pasted output from test page!';
+        'Log file link from http://test.webrtc.org:\n' + logUrl;
 
     // Labels for the bug to be filed.
     var osLabel = 'OS-';
@@ -85,7 +140,7 @@ Report.prototype = {
     var url = 'https://code.google.com/p/chromium/issues/entry?' +
         'comment=' + encodeURIComponent(description) +
         '&labels=' + encodeURIComponent(labels);
-    return url;
+    window.open(url, '_blank');
   },
 
   // Returns the logs into a JSON formated string that is a list of events
