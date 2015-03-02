@@ -9,6 +9,7 @@
 'use strict';
 
 function Report() {
+  this.logOption = null;
   this.output_ = ['TestRTC-Diagnose v0.1'];
   this.nextAsyncId_ = 0;
 
@@ -24,7 +25,39 @@ function Report() {
 
 Report.prototype = {
   open: function() {
+    if (this.logOption === 'logupload') {
+      var dialogText = 'By selecting UPLOAD REPORT AND FILE BUG link you ' +
+          'agree to that a new tab will be opened to the Chromium bug ' +
+          'tracker and a log file will be uploaded to the WebRTC ' +
+          'troubleshooter server. This log contains information about your ' +
+          'device that can be used to troubleshoot your issue. It will be ' +
+          'stored for 30 days and can be accessed by anyone with the unique ' +
+          'link.</p>';
+      document.getElementById('report-dialog-text').innerHTML = dialogText;
+
+      var uploadButton = document.getElementById('report-download') ||
+          document.getElementById('upload-button');
+      uploadButton.setAttribute('id', 'upload-button');
+      uploadButton.setAttribute('onclick',
+                                'report.prepareReport(this.parentElement)');
+      uploadButton.innerHTML = 'Upload report and file bug report.';
+
+      var reportDialog = document.getElementById('report-dialog');
+      var downloadUrl = document.createElement('p');
+      downloadUrl.setAttribute('id', 'download-url');
+      reportDialog.insertBefore(downloadUrl, uploadButton);
+    } else {
+      document.getElementById('report-link').href = this.linkToChromiumBug_();
+    }
     document.getElementById('report-dialog').open();
+  },
+
+  downloadReport: function() {
+    var content = encodeURIComponent(this.getContent_());
+    var link = document.createElement('a');
+    link.setAttribute('href', 'data:text/plain;charset=utf-8,' + content);
+    link.setAttribute('download', 'testrtc-' + (new Date().toJSON()) + '.log');
+    link.click();
   },
 
   prepareReport: function(parentElement) {
@@ -123,10 +156,17 @@ Report.prototype = {
 
   linkToChromiumBug_: function(logUrl) {
     var info = Report.getSystemInfo();
+    var text;
+    if (this.logOption === 'logupload') {
+      text = 'Log file link from http://test.webrtc.org:\n' + logUrl;
+    } else {
+      text = 'Output from the troubleshooting page at ' +
+             'http://test.webrtc.org:\n\nPlease replace this text with the ' +
+             'copy+pasted output from test page!';
+    }
 
     var description = 'Browser: ' + info.browserName + ' ' +
-        info.browserVersion + ' (' + info.platform + ')\n\n' +
-        'Log file link from http://test.webrtc.org:\n' + logUrl;
+        info.browserVersion + ' (' + info.platform + ')\n\n' + text;
 
     // Labels for the bug to be filed.
     var osLabel = 'OS-';
@@ -140,7 +180,11 @@ Report.prototype = {
     var url = 'https://code.google.com/p/chromium/issues/entry?' +
         'comment=' + encodeURIComponent(description) +
         '&labels=' + encodeURIComponent(labels);
-    window.open(url, '_blank');
+    if (this.logOption === 'logupload') {
+      window.open(url, '_blank');
+    } else {
+      return url;
+    }
   },
 
   // Returns the logs into a JSON formated string that is a list of events

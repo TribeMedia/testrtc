@@ -41,8 +41,8 @@ class UploadHandler(blobstore_handlers.BlobstoreUploadHandler):
     name = self.request.headers['X-File-Name']
     upload_files = self.get_uploads(field_name=name)
     blob_info = upload_files[0]
-    host = self.request.headers['Referer']
-    self.response.headers['Response-Text'] = host + 'serve/%s' % blob_info.key()
+    host = self.request.headers['Origin']
+    self.response.headers['Response-Text'] = host + '/serve/%s' % blob_info.key()
 
 class ServeHandler(blobstore_handlers.BlobstoreDownloadHandler):
   def get(self, resource):

@@ -28,6 +28,7 @@ var PREFIX_OK      = '[     OK ]';
 var PREFIX_FAILED  = '[ FAILED ]';
 var testSuites = [];
 var testFilters = [];
+var globalOptions = [];
 var currentTest;
 
 window.addEventListener('polymer-ready', function() {
@@ -41,6 +42,15 @@ window.addEventListener('polymer-ready', function() {
     }
     startButton.removeAttribute('disabled');
   });
+  (function setOptions() {
+    if (typeof globalOptions !== 'undefined') {
+      for (var i = 0; i < globalOptions.length; i++) {
+        if (globalOptions[i] === 'logupload') {
+          report.logOption = globalOptions[i];
+        }
+      }
+    }
+  })();
 });
 
 // A test suite is a composition of many tests.
@@ -450,6 +460,10 @@ function parseUrlParameters() {
 
 var parameters = parseUrlParameters();
 var filterParameterName = 'test_filter';
+var optionParameterName = 'options';
 if (filterParameterName in parameters) {
   testFilters = parameters[filterParameterName].split(',');
+}
+if (optionParameterName in parameters) {
+  globalOptions = parameters[optionParameterName].split(',');
 }
